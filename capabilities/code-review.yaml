@@ -31,12 +31,18 @@ owner: platform-team@example.com
 #   L3 - gateway-enforced: a runtime enforces permissions, governors and secrets rules
 conformance: L2
 
-# Which model to use, as a logical TIER, not a model ID.
-# tier:  fast      - cheapest/quickest (simple, high-volume work)
-#        balanced  - default quality/cost
-#        deep      - most capable (hard reasoning)
-# Each tier resolves to a real model per provider in models/tiers.yaml.
-# Optional override (discouraged): pin: <explicit model ID>
+# Which model to use. Declare a logical TIER, specific MODELS, or both (at least one required).
+#   tier:  fast      - cheapest/quickest (simple, high-volume work)
+#          balanced  - default quality/cost
+#          deep      - most capable (hard reasoning)
+#          Resolves to a real model per provider in models/tiers.yaml. Portable: a model
+#          change touches one file.
+#   pin:   map of provider -> exact model ID, e.g. pin: { anthropic: claude-sonnet-5-5 }
+#          Use when this capability needs one specific model. Provider names must exist in
+#          models/tiers.yaml.
+# Resolution for the active provider: pin for that provider wins; otherwise the tier mapping.
+# If neither gives a model the run fails with tool_unavailable.
+# This capability uses the tier only.
 model: { tier: balanced }
 
 # JSON Schema for what the caller must provide. Input that does not match is

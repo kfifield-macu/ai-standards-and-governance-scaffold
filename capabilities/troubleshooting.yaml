@@ -22,8 +22,14 @@ owner: platform-team@example.com
 # L1 documented | L2 validated (needs evals) | L3 gateway-enforced.
 conformance: L2
 
-# Logical tier: fast | balanced | deep. Resolved via models/tiers.yaml.
-model: { tier: balanced }
+# Model: a logical tier, specific models per provider, or both (at least one required).
+#   tier: fast | balanced | deep   resolved via models/tiers.yaml (portable default)
+#   pin:  { <provider>: <exact model ID> }   specific model for a provider; wins over the tier
+# Here both are set: Anthropic always uses the pinned model; any other provider (for example
+# GitHub Copilot) falls back to the balanced tier. Governor downgrades still use tiers.
+model:
+  tier: balanced
+  pin: { anthropic: claude-sonnet-5-5 }
 
 # Caller input, as JSON Schema. Mismatch -> error invalid_input.
 inputs:

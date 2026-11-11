@@ -1,5 +1,7 @@
 # Logical tier -> provider model. Model IDs change often; edit only this file.
 # Replace placeholder values with your current model IDs.
+# Provider names used here are also the valid keys for a capability's model.pin.
+# A capability can use a tier (resolved below), pin specific models, or both.
 tiers:
   fast:
     anthropic: claude-haiku-5-5

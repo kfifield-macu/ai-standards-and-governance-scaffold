@@ -20,10 +20,16 @@
     "model": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["tier"],
+      "description": "Declare a logical tier, specific models per provider, or both. At least one is required.",
+      "anyOf": [{ "required": ["tier"] }, { "required": ["pin"] }],
       "properties": {
-        "tier": { "enum": ["fast", "balanced", "deep"] },
-        "pin": { "type": "string", "description": "Optional explicit model ID override. Prefer tier." }
+        "tier": { "enum": ["fast", "balanced", "deep"], "description": "Logical tier, resolved per provider via models/tiers.yaml." },
+        "pin": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Specific model per provider, e.g. { anthropic: claude-sonnet-5-5 }. A pin for the active provider wins over the tier.",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
       }
     },
     "inputs": { "type": "object", "description": "JSON Schema for what the caller provides." },

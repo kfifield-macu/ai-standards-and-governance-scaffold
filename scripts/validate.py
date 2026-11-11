@@ -96,8 +96,13 @@ def main() -> int:
             err(rel(p), f"file name must match capability name '{name}'")
         if not cap["owner"].strip():
             err(rel(p), "owner is required. Nobody has decided this.")
-        if cap["model"]["tier"] not in tiers:
-            err(rel(p), f"tier {cap['model']['tier']} missing from models/tiers.yaml")
+        model = cap["model"]
+        if "tier" in model and model["tier"] not in tiers:
+            err(rel(p), f"tier {model['tier']} missing from models/tiers.yaml")
+        known_providers = {prov for t in tiers.values() for prov in t}
+        for prov in model.get("pin", {}):
+            if prov not in known_providers:
+                err(rel(p), f"model.pin provider '{prov}' not listed in models/tiers.yaml")
         obs = cap["observability"]
         if obs["content_capture"] and not (obs.get("retention_days") and obs.get("redact")):
             err(rel(p), "content_capture requires retention_days and redact: true")

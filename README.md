@@ -80,7 +80,7 @@ version: 0.1.0
 status: draft                # draft | active | deprecated
 owner: platform-team@example.com
 conformance: L2              # L1 | L2 | L3
-model: { tier: balanced }    # fast | balanced | deep
+model: { tier: balanced }    # tier and/or pin: { provider: model-id }
 context: context/troubleshooting.md
 governor: governors/troubleshooting.yaml
 permissions: permissions/troubleshooting.yaml
@@ -95,7 +95,17 @@ evals: evals/troubleshooting/
 Defines what users and services can ask for.
 
 - **Typed inputs and outputs** are JSON Schema inside the manifest (`inputs`, `outputs`).
-- **Model tier, not model ID.** `fast | balanced | deep` resolves through `models/tiers.yaml`, one file per provider mapping. Model IDs change often, so a model change touches one file. An explicit `model.pin` is allowed as an override but discouraged.
+- **Model: tier, specific models, or both.** A capability sets `model.tier` (`fast | balanced | deep`), `model.pin` (a map of provider to exact model ID), or both. At least one is required.
+  - The **tier** resolves through `models/tiers.yaml`, so a model change touches one file. It is the portable default.
+  - A **pin** names a specific model for a provider, for capabilities that need one.
+  - **Resolution** for the active provider: a pin for that provider wins, otherwise the tier mapping. With neither, the run fails with `tool_unavailable`.
+  - Pin provider names must exist in `models/tiers.yaml`. Governor `downgrade_to` still uses tiers.
+
+  ```yaml
+  model:
+    tier: balanced                       # portable default
+    pin: { anthropic: claude-sonnet-5-5 } # Anthropic always uses this; others use the tier
+  ```
 - **Lifecycle.** `status` is `draft`, `active` or `deprecated`. `version` is semver. A change to permissions or budgets requires owner review.
 - **Required owner.** A capability without an owner is rejected ("Nobody has decided this").
 - **Evals** are required at L2 and above (see [evals](#evals)).
@@ -283,7 +293,7 @@ Skills and agents **reference the capability**, so ownership and policy always t
 ## Provider portability
 
 - **Instructions:** `AGENTS.md` is canonical. `scripts/sync.sh [target-repo]` creates `CLAUDE.md` and `.github/copilot-instructions.md` as symlinks to it in a target repo.
-- **Models:** `models/tiers.yaml` maps tiers to each provider's model ID. Replace the placeholder Copilot entries with your current models.
+- **Models:** `models/tiers.yaml` maps tiers to each provider's model ID, and a capability may pin specific models per provider. Replace the placeholder Copilot entries with your current models.
 - **Tools:** MCP definitions are reused where they exist.
 - **Telemetry:** OpenTelemetry is provider-neutral.
 

@@ -55,7 +55,7 @@ flowchart TD
     C -- "limit hit" --> C2["on_limit:<br/>queue / downgrade / approve / deny<br/>budget_exceeded"]
     C2 -. "queue, downgrade, or approved" .-> D
     C -- ok --> D["4. Build context<br/>attach only permitted sources<br/>redact, then send"]
-    D --> E["5. Model call<br/>tier resolved to provider model"]
+    D --> E["5. Model call<br/>pin or tier resolved to provider model"]
     E --> F["6. Agent proposes a tool call<br/>operation plus args, never a raw command"]
     F --> G{"7. Permissions<br/>secrets invariant first<br/>then org ceiling, then capability rules<br/>risk x target.environment"}
     G -- "denied: permission_denied" --> T["Denial recorded as a span"]
@@ -88,7 +88,7 @@ flowchart TD
 | 2 | Capability check | Must be `active`, have an owner, and inputs must match the schema | `schemas/capability.schema.json` | `invalid_input` |
 | 3 | Governor | Budget and per-developer limits checked; `on_limit` decides: queue, downgrade, approve or deny | `governors/` | `budget_exceeded` |
 | 4 | Build context | Template resolves `attach` sources. Only sources the permissions allow. Redacted before send. | `context/` | `permission_denied` |
-| 5 | Model call | Tier (`fast/balanced/deep`) resolves to a provider model | `models/tiers.yaml` | n/a |
+| 5 | Model call | A pin for the provider wins; otherwise the tier (`fast/balanced/deep`) resolves to a provider model | `models/tiers.yaml` | n/a |
 | 6 | Tool proposal | Agent picks an operation from a tool descriptor, with args. No raw commands. | `permissions/tools/` | `invalid_input` |
 | 7 | Permissions | Secrets invariant, then org ceiling, then capability rules. Default deny. Target comes from the harness. | `permissions/` | `permission_denied` |
 | 8 | Execute | Harness runs the CLI using the named profile. Credentials stay outside the model's view. | tool `auth` block | `auth_failed`, `tool_unavailable` |
@@ -103,7 +103,7 @@ flowchart TD
 ## 1. Capability interface
 
 - Typed inputs and outputs
-- Model **tier** (`fast | balanced | deep`), not a model ID. A model change touches one file.
+- Model **tier** (`fast | balanced | deep`) for portability, **specific models** per provider when needed, or both. A pin wins; otherwise the tier decides.
 - Lifecycle: `draft | active | deprecated`, with semver
 - **No owner, no capability.** "Nobody has decided this."
 
