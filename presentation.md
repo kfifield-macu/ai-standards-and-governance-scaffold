@@ -35,7 +35,7 @@ One manifest per capability. Everything hangs off it.
 ```yaml
 name: troubleshooting
 owner: platform-team@example.com
-model: { tier: balanced }
+model: { tier: balanced }   # and/or pin specific models
 context: context/troubleshooting.md
 governor: governors/troubleshooting.yaml
 permissions: permissions/troubleshooting.yaml
@@ -212,7 +212,7 @@ Rules only **narrow** from org defaults to capability. Deny wins.
 - Stubs for `skills/` and `agents/`
 
 ```bash
-python3 -I scripts/validate.py   # OK: 0 error(s)
+pwsh -NoProfile -File scripts/validate.ps1   # OK: 0 error(s)
 ```
 
 ---

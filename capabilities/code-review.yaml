@@ -27,7 +27,7 @@ owner: platform-team@example.com
 
 # How strongly this capability's rules are backed.
 #   L1 - documented: files exist and describe intent
-#   L2 - validated: scripts/validate.py passes. Requires an evals/ directory.
+#   L2 - validated: scripts/validate.ps1 passes. Requires an evals/ directory.
 #   L3 - gateway-enforced: a runtime enforces permissions, governors and secrets rules
 conformance: L2
 

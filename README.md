@@ -25,6 +25,7 @@ This folder is **specs and schemas only**. It defines the contract and validates
 - [The secrets invariant](#the-secrets-invariant)
 - [Conformance levels](#conformance-levels)
 - [Precedence](#precedence)
+- [Evals](#evals)
 - [Skills and agents](#skills-and-agents)
 - [Provider portability](#provider-portability)
 - [Tooling](#tooling)
@@ -59,19 +60,19 @@ This folder is **specs and schemas only**. It defines the contract and validates
 │   ├── <capability>.yaml          per-capability policy
 │   └── tools/                     tool descriptors (newrelic, octopus, git)
 ├── observability/                 required attributes, error taxonomy, example trace
-├── models/tiers.yaml              logical tier -> provider model ID
+├── models/tiers.yaml              logical tier -> provider model ID (also the valid providers for pins)
 ├── evals/<capability>/            minimal eval files
 ├── schemas/                       JSON Schemas for every file type
 ├── skills/                        stub (see skills/README.md)
 ├── agents/                        stub (see agents/README.md)
 └── scripts/
-    ├── validate.py                schema + cross-file rule checks
+    ├── validate.ps1               schema + cross-file rule checks (PowerShell 7)
     └── sync.sh                    generate provider files from AGENTS.md
 ```
 
 ## The capability is the root
 
-A capability manifest is the single document that ties the five standards together. It points to a context template, a governor and a permissions policy, and carries the owner, version, status and model tier.
+A capability manifest is the single document that ties the five standards together. It points to a context template, a governor and a permissions policy, and carries the owner, version, status and model (a tier, specific models, or both).
 
 ```yaml
 apiVersion: agent-standards/v1
@@ -241,7 +242,7 @@ On a detection the run **redacts, logs and halts**. A leaked secret is an incide
 
 ### How tools authenticate without the agent seeing credentials
 
-- Manifests hold **references only**: `profile:<tool>/<name>`. The validator rejects secret-looking literals anywhere in the repo.
+- Manifests hold **references only**: `profile:<tool>/<name>`. The validator rejects secret-looking literals in any YAML, Markdown or JSON file.
 - The harness runs the CLI **with that profile**, so the CLI reads its own credential store. The agent never holds a plaintext secret.
 - Each tool descriptor declares an `auth` block (native method, `store_paths`, profile names). **Every declared `store_paths` entry is automatically added to the denied paths**, so a descriptor cannot forget to protect its own store.
 - Every capability using an authenticated tool names a **least-privilege profile** (for example `readonly` for troubleshooting).
@@ -251,7 +252,7 @@ On a detection the run **redacts, logs and halts**. A leaked secret is an incide
 | Level | Meaning |
 |-------|---------|
 | **L1** | Documented. The files exist and describe intent. |
-| **L2** | Validated. `scripts/validate.py` passes: schemas, owner, evals, narrow-only permissions, secret scan. |
+| **L2** | Validated. `scripts/validate.ps1` passes: schemas, owner, evals, narrow-only permissions, secret scan. |
 | **L3** | Gateway-enforced. A runtime enforces permissions, governors and the secrets invariant. |
 
 A capability declares the level it claims. Per-rule `enforcement` (`advisory | enforced`) says which individual rules are actually guaranteed at that level.
@@ -300,11 +301,11 @@ Skills and agents **reference the capability**, so ownership and policy always t
 ## Tooling
 
 ```bash
-# install once
-pip install pyyaml jsonschema
+# install once (needs PowerShell 7+, i.e. `pwsh`)
+pwsh -NoProfile -Command "Install-Module powershell-yaml -Scope CurrentUser"
 
-# validate everything
-python3 -I scripts/validate.py
+# validate everything (exit code 0 = valid, 1 = errors, 2 = missing module)
+pwsh -NoProfile -File scripts/validate.ps1
 
 # push provider files into another repo
 scripts/sync.sh /path/to/target-repo
@@ -320,10 +321,17 @@ The validator checks:
 6. Context templates attach only permitted sources.
 7. `auth.profiles` reference profiles a descriptor declares.
 8. `content_capture` comes with `redact` and `retention_days`.
-9. Descriptor credential stores are added to the denied paths, and no allowed path is denied.
-10. No secret-looking literal appears in any YAML, Markdown or JSON file.
+9. Descriptor credential stores are added to the denied paths, and no allowed path is listed verbatim in that denylist.
+10. The model tier exists in `models/tiers.yaml`, and every `model.pin` provider is listed there.
+11. No secret-looking literal appears in any YAML, Markdown or JSON file under the repo (the `scripts/` folder is excluded).
 
 **It does not evaluate CEL.** It checks that rules are well-formed. Evaluating them is the enforcer's job (L3).
+
+Notes on the validator:
+
+- **PowerShell 7+ required.** Windows PowerShell 5.1 (the one built into Windows) lacks `Test-Json -Schema`. Install `pwsh` separately if needed.
+- **Schema errors are terse.** `Test-Json` reports one schema problem per file at a time, so fix and rerun. For some conditional rules (for example "`downgrade_to` is required when `on_limit` is `downgrade`") it gives no detail, and the validator prints a generic message naming the schema to check.
+- **`sync.sh` is bash.** On Windows, run it from WSL or Git Bash.
 
 ## Boundaries and assumptions
 
@@ -344,11 +352,11 @@ The validator checks:
 
 ## Adding a capability
 
-1. Create `capabilities/<name>.yaml` with an owner, tier and conformance level.
+1. Create `capabilities/<name>.yaml` with an owner, a model (tier and/or pinned models) and a conformance level.
 2. Write `context/<name>.md`, listing only the sources it needs under `attach`.
 3. Write `permissions/<name>.yaml`. Start from deny and list only needed tools and operations. Every one must exist in `permissions/tools/` and in `org-defaults.yaml`.
 4. Write `governors/<name>.yaml`.
 5. If it uses an authenticated tool, add `auth.profiles` with a least-privilege profile.
 6. For L2 and above, add `evals/<name>/` with at least one eval.
-7. Run `python3 -I scripts/validate.py`.
+7. Run `pwsh -NoProfile -File scripts/validate.ps1`.
 8. Get owner review. Changes to permissions or budgets always need it.

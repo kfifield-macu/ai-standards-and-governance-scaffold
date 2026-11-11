@@ -23,4 +23,4 @@ Report failures as one line: `<category>: <cause>`. Categories: `auth_failed`, `
 
 ## Validation
 
-Run `python3 -I scripts/validate.py` after changing anything under `capabilities/`, `context/`, `governors/`, `permissions/`, `observability/` or `evals/`.
+Run `pwsh -NoProfile -File scripts/validate.ps1` after changing anything under `capabilities/`, `context/`, `governors/`, `permissions/`, `observability/` or `evals/`.
