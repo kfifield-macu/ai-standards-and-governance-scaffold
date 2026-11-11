@@ -1,0 +1,6 @@
+apiVersion: agent-standards/v1
+enforcement: enforced
+budget: { amount: 400, currency: USD, period: month, scope: capability }
+limits:
+  - { requests: 20, per: developer, period: day }
+on_limit: queue          # queue, don't deny

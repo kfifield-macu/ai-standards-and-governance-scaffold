@@ -1,0 +1,9 @@
+# Fixed error categories -> error.type. Message is ONE line: category + cause. No credential material.
+categories:
+  auth_failed:       "Credentials missing or rejected for a profile."
+  permission_denied: "Policy denied the tool call."
+  budget_exceeded:   "Governor limit reached (see on_limit)."
+  secret_detected:   "Scanner found a secret in output; run halted."
+  tool_unavailable:  "Tool not installed or not reachable."
+  invalid_input:     "Input failed the capability's input schema."
+example: "auth_failed: profile newrelic/readonly rejected by api.newrelic.com"

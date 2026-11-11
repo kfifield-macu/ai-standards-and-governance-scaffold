@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-standards/v1/governor",
+  "title": "Token governor",
+  "type": "object",
+  "required": ["apiVersion", "enforcement", "on_limit"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "agent-standards/v1" },
+    "enforcement": { "enum": ["advisory", "enforced"] },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency", "period", "scope"],
+      "properties": {
+        "amount": { "type": "number", "exclusiveMinimum": 0 },
+        "currency": { "type": "string" },
+        "period": { "enum": ["day", "week", "month"] },
+        "scope": { "enum": ["developer", "team", "capability", "org"] }
+      }
+    },
+    "limits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requests", "per", "period"],
+        "properties": {
+          "requests": { "type": "integer", "minimum": 1 },
+          "per": { "enum": ["developer", "team", "capability", "org"] },
+          "period": { "enum": ["minute", "hour", "day"] }
+        }
+      }
+    },
+    "on_limit": { "enum": ["queue", "deny", "downgrade", "approve"] },
+    "downgrade_to": { "enum": ["fast", "balanced"], "description": "Required when on_limit is downgrade." }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "on_limit": { "const": "downgrade" } }, "required": ["on_limit"] },
+      "then": { "required": ["downgrade_to"] }
+    }
+  ]
+}

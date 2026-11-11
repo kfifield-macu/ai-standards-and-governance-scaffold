@@ -1,0 +1,21 @@
+# Adopts OpenTelemetry GenAI semantic conventions (gen_ai.*) and adds capability.* / policy.* / enduser.id.
+# One trace, not another log. Metadata is always recorded; content capture is opt-in per capability.
+required:
+  - gen_ai.operation.name
+  - gen_ai.tool.name
+  - gen_ai.tool.call.id
+  - capability.name
+  - capability.owner
+  - capability.version
+  - policy.decision          # allowed | denied | approval_required
+  - enduser.id               # REQUIRED; source is an open decision (see README)
+optional:
+  - policy.rule
+  - target.environment
+  - gen_ai.usage.input_tokens
+  - gen_ai.usage.output_tokens
+  - error.type
+secrets:
+  # Detection events carry the rule and location, never the value.
+  event: secret.detected
+  attributes: [secret.rule, secret.location]

@@ -1,0 +1,27 @@
+apiVersion: agent-standards/v1
+name: troubleshooting
+description: Investigate incidents with read-only observability and deployment queries.
+version: 0.1.0
+status: draft
+owner: platform-team@example.com
+conformance: L2
+model: { tier: balanced }
+inputs:
+  type: object
+  required: [incident]
+  properties:
+    incident: { type: string }
+outputs:
+  type: object
+  required: [hypothesis, evidence, next_step]
+  properties:
+    hypothesis: { type: string }
+    evidence: { type: array, items: { type: string } }
+    next_step: { type: string }
+context: context/troubleshooting.md
+governor: governors/troubleshooting.yaml
+permissions: permissions/troubleshooting.yaml
+observability: { content_capture: false, retention_days: 30, redact: true }
+auth:
+  profiles: [profile:newrelic/readonly, profile:octopus/readonly]   # references only
+evals: evals/troubleshooting/

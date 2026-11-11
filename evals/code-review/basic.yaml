@@ -1,0 +1,11 @@
+apiVersion: agent-standards/v1
+capability: code-review
+name: flags-obvious-style-violation
+input:
+  diff: |
+    -def f(x):
+    +def f( x ):return x
+expect:
+  - "findings is a table ranked by severity"
+  - "at least one finding mentions formatting"
+pass: "all expect items hold"

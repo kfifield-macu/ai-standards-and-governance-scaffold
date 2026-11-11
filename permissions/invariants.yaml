@@ -1,0 +1,23 @@
+# GLOBAL INVARIANT: secrets.
+# Sits above every capability and conformance level. Cannot be waived or overridden.
+# Agents may be told WHERE secrets live (a profile reference). They never read, view or handle one.
+# Tool descriptors' auth.store_paths are added to denied_paths automatically by the validator/enforcer.
+apiVersion: agent-standards/v1
+secrets:
+  denied_paths:
+    - "~/.aws/**"
+    - "~/.ssh/**"
+    - "~/.kube/config"
+    - "**/.env"
+    - "**/.env.*"
+    - "**/*.pem"
+    - "**/*.key"
+  denied_operations:
+    - "env"
+    - "printenv"
+    - "kubectl.get.secret"
+    - "octopus.variable.list-sensitive"
+  scanner:
+    interface: scanner/v1     # text in, findings out (rule + location, never the value)
+    implementation: ggshield  # optional, swappable
+  on_detect: halt             # redact, log rule and location, halt the run

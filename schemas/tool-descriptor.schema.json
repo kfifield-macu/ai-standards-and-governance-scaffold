@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-standards/v1/tool-descriptor",
+  "title": "Tool descriptor",
+  "description": "Describes a CLI tool that has no MCP server. Where an MCP tool definition exists, reuse it and add only the risk and auth fields.",
+  "type": "object",
+  "required": ["apiVersion", "name", "source", "auth", "operations"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "agent-standards/v1" },
+    "name": { "type": "string" },
+    "source": { "enum": ["cli", "mcp"] },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "store_paths", "profiles"],
+      "properties": {
+        "method": { "type": "string", "description": "Native auth method of the tool, e.g. api-key-profile, keychain, oidc." },
+        "store_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Where the tool keeps credentials. Automatically added to the global denied paths."
+        },
+        "profiles": { "type": "array", "items": { "type": "string" }, "description": "Profile names that exist, never values." }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "risk", "args"],
+        "properties": {
+          "name": { "type": "string" },
+          "risk": { "enum": ["read", "write", "destructive"] },
+          "command": { "type": "string", "description": "Fixed command template. The agent supplies args, never the command string." },
+          "args": { "type": "object", "description": "JSON Schema for the arguments." },
+          "target": { "type": "string", "description": "How the harness derives target.environment. The agent never declares it." }
+        }
+      }
+    }
+  }
+}

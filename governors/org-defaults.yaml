@@ -1,0 +1,5 @@
+apiVersion: agent-standards/v1
+enforcement: advisory
+limits:
+  - { requests: 100, per: developer, period: day }
+on_limit: queue

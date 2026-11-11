@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-standards/v1/permissions",
+  "title": "Capability permissions policy",
+  "description": "Rules may only narrow org defaults. Deny wins. Default is deny.",
+  "type": "object",
+  "required": ["apiVersion", "default", "tools"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "agent-standards/v1" },
+    "default": { "const": "deny" },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tool", "operations"],
+        "properties": {
+          "tool": { "type": "string" },
+          "operations": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "read": { "type": "array", "items": { "type": "string" } },
+        "write": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "egress": { "type": "array", "items": { "type": "string" } } }
+    },
+    "attach_sources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Context sources this capability may attach."
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "enforcement", "expression", "decision", "message"],
+        "properties": {
+          "name": { "type": "string" },
+          "enforcement": { "enum": ["advisory", "enforced"] },
+          "expression": { "type": "string", "description": "CEL over the tool-call input document." },
+          "decision": { "enum": ["deny", "approve"] },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

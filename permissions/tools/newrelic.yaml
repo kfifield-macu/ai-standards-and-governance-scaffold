@@ -1,0 +1,27 @@
+apiVersion: agent-standards/v1
+name: newrelic
+source: cli
+auth:
+  method: api-key-profile        # the tool's native method; the human provisions it outside this standard
+  store_paths: ["~/.newrelic/**"]
+  profiles: [readonly]           # names only, never values
+operations:
+  - name: nrql.query
+    risk: read
+    command: "newrelic nrql query --accountId {account} --query {nrql}"
+    args:
+      type: object
+      required: [account, nrql]
+      properties:
+        account: { type: string }
+        nrql: { type: string }
+    target: harness-resolved-from-account
+  - name: entity.search
+    risk: read
+    command: "newrelic entity search --name {name}"
+    args:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    target: harness-resolved-from-profile

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-standards/v1/capability",
+  "title": "Capability manifest",
+  "description": "The governed contract for something a user or service can ask an agent to do.",
+  "type": "object",
+  "required": ["apiVersion", "name", "version", "status", "owner", "conformance", "model", "context", "governor", "permissions", "observability"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "agent-standards/v1" },
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "description": { "type": "string" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "status": { "enum": ["draft", "active", "deprecated"] },
+    "owner": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$" },
+    "conformance": {
+      "enum": ["L1", "L2", "L3"],
+      "description": "L1 documented, L2 validated, L3 gateway-enforced."
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier"],
+      "properties": {
+        "tier": { "enum": ["fast", "balanced", "deep"] },
+        "pin": { "type": "string", "description": "Optional explicit model ID override. Prefer tier." }
+      }
+    },
+    "inputs": { "type": "object", "description": "JSON Schema for what the caller provides." },
+    "outputs": { "type": "object", "description": "JSON Schema for what the capability returns." },
+    "context": { "type": "string", "description": "Path to a context template (Markdown with front matter)." },
+    "governor": { "type": "string", "description": "Path to a token governor file." },
+    "permissions": { "type": "string", "description": "Path to a permissions policy file." },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_capture"],
+      "properties": {
+        "content_capture": { "type": "boolean", "description": "Opt-in capture of prompt/response content." },
+        "retention_days": { "type": "integer", "minimum": 1 },
+        "redact": { "type": "boolean" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "References only. Never credential values.",
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^profile:[a-z0-9-]+/[a-z0-9-]+$" }
+        }
+      }
+    },
+    "evals": { "type": "string", "description": "Path to an evals directory. Required at L2 and above." }
+  }
+}

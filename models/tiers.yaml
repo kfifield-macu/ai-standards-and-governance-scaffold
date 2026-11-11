@@ -1,0 +1,12 @@
+# Logical tier -> provider model. Model IDs change often; edit only this file.
+# Replace placeholder values with your current model IDs.
+tiers:
+  fast:
+    anthropic: claude-haiku-5-5
+    github-copilot: "<copilot fast model>"
+  balanced:
+    anthropic: claude-sonnet-5-5
+    github-copilot: "<copilot default model>"
+  deep:
+    anthropic: claude-opus-5-5
+    github-copilot: "<copilot deep model>"

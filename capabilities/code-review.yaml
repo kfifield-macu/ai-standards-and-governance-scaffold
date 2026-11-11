@@ -1,0 +1,31 @@
+apiVersion: agent-standards/v1
+name: code-review
+description: Review a diff against the style guide.
+version: 0.1.0
+status: active
+owner: platform-team@example.com
+conformance: L2
+model: { tier: balanced }
+inputs:
+  type: object
+  required: [diff]
+  properties:
+    diff: { type: string }
+outputs:
+  type: object
+  required: [findings]
+  properties:
+    findings:
+      type: array
+      items:
+        type: object
+        required: [severity, file, comment]
+        properties:
+          severity: { enum: [high, medium, low] }
+          file: { type: string }
+          comment: { type: string }
+context: context/code-review.md
+governor: governors/code-review.yaml
+permissions: permissions/code-review.yaml
+observability: { content_capture: false, retention_days: 30, redact: true }
+evals: evals/code-review/

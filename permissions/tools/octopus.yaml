@@ -1,0 +1,38 @@
+apiVersion: agent-standards/v1
+name: octopus
+source: cli
+auth:
+  method: api-key-profile
+  store_paths: ["~/.octopus/**"]
+  profiles: [readonly, deployer]
+operations:
+  - name: release.list
+    risk: read
+    command: "octopus release list --project {project}"
+    args:
+      type: object
+      required: [project]
+      properties:
+        project: { type: string }
+    target: harness-resolved-from-profile
+  - name: deployment.status
+    risk: read
+    command: "octopus deployment status --project {project} --environment {environment}"
+    args:
+      type: object
+      required: [project, environment]
+      properties:
+        project: { type: string }
+        environment: { type: string }
+    target: harness-resolved-from-environment
+  - name: deployment.redeploy
+    risk: write
+    command: "octopus release deploy --project {project} --version {version} --environment {environment}"
+    args:
+      type: object
+      required: [project, version, environment]
+      properties:
+        project: { type: string }
+        version: { type: string }
+        environment: { type: string }
+    target: harness-resolved-from-environment

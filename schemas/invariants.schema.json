@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-standards/v1/invariants",
+  "title": "Global invariants (secrets)",
+  "description": "Sits above every capability and conformance level. No manifest can waive or override it.",
+  "type": "object",
+  "required": ["apiVersion", "secrets"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "agent-standards/v1" },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["denied_paths", "denied_operations", "scanner", "on_detect"],
+      "properties": {
+        "denied_paths": { "type": "array", "items": { "type": "string" } },
+        "denied_operations": { "type": "array", "items": { "type": "string" } },
+        "scanner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interface"],
+          "properties": {
+            "interface": { "const": "scanner/v1", "description": "text in, findings out (rule, location, never the value)" },
+            "implementation": { "type": "string", "description": "Optional, e.g. ggshield." }
+          }
+        },
+        "on_detect": { "const": "halt", "description": "Redact, log rule and location, halt the run." }
+      }
+    }
+  }
+}

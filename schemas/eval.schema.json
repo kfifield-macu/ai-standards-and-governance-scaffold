@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-standards/v1/eval",
+  "title": "Minimal eval",
+  "description": "Placeholder shape. A fuller eval framework comes later.",
+  "type": "object",
+  "required": ["apiVersion", "capability", "name", "input", "expect", "pass"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "agent-standards/v1" },
+    "capability": { "type": "string" },
+    "name": { "type": "string" },
+    "input": { "type": "object" },
+    "expect": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Properties the output must have." },
+    "pass": { "type": "string", "description": "Pass criterion, e.g. all expect items hold." }
+  }
+}

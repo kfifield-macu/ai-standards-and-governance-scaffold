@@ -1,0 +1,26 @@
+apiVersion: agent-standards/v1
+name: git
+source: cli
+auth:
+  method: none-required
+  store_paths: ["~/.git-credentials", "~/.config/git/credentials"]
+  profiles: []
+operations:
+  - name: diff
+    risk: read
+    command: "git diff {range}"
+    args:
+      type: object
+      required: [range]
+      properties:
+        range: { type: string }
+    target: harness-resolved-from-repo
+  - name: log
+    risk: read
+    command: "git log {range}"
+    args:
+      type: object
+      required: [range]
+      properties:
+        range: { type: string }
+    target: harness-resolved-from-repo

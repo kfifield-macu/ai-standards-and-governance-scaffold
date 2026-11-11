@@ -1,0 +1,29 @@
+# Org-level ceiling. A capability may only NARROW this, never widen it. Deny wins.
+apiVersion: agent-standards/v1
+default: deny
+tools:
+  - tool: newrelic
+    operations: [nrql.query, entity.search]
+  - tool: octopus
+    operations: [release.list, deployment.status, deployment.redeploy]
+  - tool: git
+    operations: [diff, log]
+paths:
+  read: ["**"]
+  write: []
+network:
+  egress: ["api.newrelic.com", "*.octopus.app"]
+attach_sources: [diff, CONTRIBUTING.md, style-guide, runbook, incident-ticket]
+rules:
+  - name: prod-writes-need-approval
+    enforcement: enforced
+    expression: >-
+      tool_call.risk != "read" && target.environment == "prod"
+    decision: approve
+    message: "Writes to prod require human approval."
+  - name: capability-has-owner
+    enforcement: enforced
+    expression: >-
+      has(capability.owner) && capability.owner != ""
+    decision: deny
+    message: "this capability has no owner. Nobody has decided this."

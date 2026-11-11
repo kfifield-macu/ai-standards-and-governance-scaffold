@@ -1,0 +1,7 @@
+apiVersion: agent-standards/v1
+enforcement: advisory
+budget: { amount: 150, currency: USD, period: month, scope: capability }
+limits:
+  - { requests: 50, per: developer, period: day }
+on_limit: downgrade
+downgrade_to: fast
