@@ -1,16 +1,54 @@
+# CAPABILITY MANIFEST: the root document. One per capability; everything else hangs off it.
+# Schema: schemas/capability.schema.json
+
+# Fixed value. Identifies the version of this standard. Must be exactly: agent-standards/v1
 apiVersion: agent-standards/v1
+
+# Unique ID. Lowercase letters, digits and hyphens, starting with a letter.
+# MUST match this file's name (code-review.yaml).
 name: code-review
+
+# Free text. One line on what a caller gets by asking for this.
 description: Review a diff against the style guide.
+
+# Semver (MAJOR.MINOR.PATCH). Bump for any change.
+# Changes to permissions or budgets also require owner review.
 version: 0.1.0
+
+# Lifecycle.
+#   draft       - being built; not for general use
+#   active      - approved and in use
+#   deprecated  - still works, being phased out
 status: active
+
+# Who is accountable. REQUIRED, must be an email/group address.
+# A capability with no owner is rejected: "Nobody has decided this."
 owner: platform-team@example.com
+
+# How strongly this capability's rules are backed.
+#   L1 - documented: files exist and describe intent
+#   L2 - validated: scripts/validate.py passes. Requires an evals/ directory.
+#   L3 - gateway-enforced: a runtime enforces permissions, governors and secrets rules
 conformance: L2
+
+# Which model to use, as a logical TIER, not a model ID.
+# tier:  fast      - cheapest/quickest (simple, high-volume work)
+#        balanced  - default quality/cost
+#        deep      - most capable (hard reasoning)
+# Each tier resolves to a real model per provider in models/tiers.yaml.
+# Optional override (discouraged): pin: <explicit model ID>
 model: { tier: balanced }
+
+# JSON Schema for what the caller must provide. Input that does not match is
+# rejected with error invalid_input.
 inputs:
   type: object
   required: [diff]
   properties:
     diff: { type: string }
+
+# JSON Schema for what the capability returns. The result is checked against it
+# before being returned to the caller.
 outputs:
   type: object
   required: [findings]
@@ -24,8 +62,27 @@ outputs:
           severity: { enum: [high, medium, low] }
           file: { type: string }
           comment: { type: string }
+
+# Path to the context template: what gets sent to the agent (see context/).
 context: context/code-review.md
+
+# Path to the token governor: how much this capability may use (see governors/).
 governor: governors/code-review.yaml
+
+# Path to the permissions policy: what the agent may do (see permissions/).
 permissions: permissions/code-review.yaml
+
+# What gets recorded in traces. Metadata (tool, decision, tokens, owner) is ALWAYS recorded.
+#   content_capture: true | false
+#       Also record prompt/response content. Off by default. If true, redact and
+#       retention_days are REQUIRED.
+#   retention_days: integer >= 1. How long captured content is kept.
+#   redact: true | false. Scrub sensitive data from captured content.
 observability: { content_capture: false, retention_days: 30, redact: true }
+
+# Path to the evals directory. REQUIRED at L2 and L3, optional at L1.
+# Each file is one minimal eval (see evals/).
 evals: evals/code-review/
+
+# Note: this capability uses no authenticated tools, so there is no `auth:` block.
+# See troubleshooting.yaml for one.

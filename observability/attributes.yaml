@@ -1,21 +1,28 @@
-# Adopts OpenTelemetry GenAI semantic conventions (gen_ai.*) and adds capability.* / policy.* / enduser.id.
-# One trace, not another log. Metadata is always recorded; content capture is opt-in per capability.
+# TRACE ATTRIBUTES. Adopts OpenTelemetry GenAI semantic conventions (gen_ai.*) and adds
+# capability.*, policy.*, target.* and enduser.id. One trace, not another log.
+# Metadata is always recorded; prompt/response content is opt-in per capability
+# (observability.content_capture in the manifest).
+
+# Every tool-call span MUST carry these.
 required:
-  - gen_ai.operation.name
-  - gen_ai.tool.name
-  - gen_ai.tool.call.id
-  - capability.name
-  - capability.owner
-  - capability.version
+  - gen_ai.operation.name    # OTel: what kind of operation (e.g. execute_tool)
+  - gen_ai.tool.name         # OTel: which tool/operation ran or was attempted
+  - gen_ai.tool.call.id      # OTel: ties request, decision and result together
+  - capability.name          # which capability this ran under
+  - capability.owner         # who is accountable
+  - capability.version       # exact version that ran
   - policy.decision          # allowed | denied | approval_required
-  - enduser.id               # REQUIRED; source is an open decision (see README)
+  - enduser.id               # who acted. REQUIRED; where it comes from is an open decision (README)
+
+# Carry these when known.
 optional:
-  - policy.rule
-  - target.environment
+  - policy.rule              # name of the rule that decided (e.g. no-writes-outside-dev)
+  - target.environment       # dev | prod | ... set by the harness, never the agent
   - gen_ai.usage.input_tokens
   - gen_ai.usage.output_tokens
-  - error.type
+  - error.type              # one of the categories in errors.yaml
+
+# Secret detections. Emitted as an event. Carries the rule and where it was found, NEVER the value.
 secrets:
-  # Detection events carry the rule and location, never the value.
   event: secret.detected
   attributes: [secret.rule, secret.location]

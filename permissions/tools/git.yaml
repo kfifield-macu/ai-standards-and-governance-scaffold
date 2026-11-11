@@ -1,11 +1,18 @@
+# TOOL DESCRIPTOR: git (CLI). Schema: schemas/tool-descriptor.schema.json
+# See newrelic.yaml for the full field-by-field explanation.
 apiVersion: agent-standards/v1
 name: git
-source: cli
+source: cli            # cli | mcp
+
 auth:
+  # none-required: git needs no credentials for local diff/log. Its credential files are still
+  # listed in store_paths so they are denied to the agent.
   method: none-required
   store_paths: ["~/.git-credentials", "~/.config/git/credentials"]
-  profiles: []
+  profiles: []         # no profiles: nothing for a capability to reference
+
 operations:
+  # Both are risk: read. (Options: read | write | destructive.)
   - name: diff
     risk: read
     command: "git diff {range}"

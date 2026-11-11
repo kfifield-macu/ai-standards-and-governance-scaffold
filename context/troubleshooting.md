@@ -1,4 +1,6 @@
 ---
+# attach: named sources sent with the prompt. Must all be listed in
+# permissions/troubleshooting.yaml under attach_sources. Redacted before sending.
 attach: [runbook, incident-ticket]
 ---
 Investigate the incident using read-only observability queries first.

@@ -1,11 +1,19 @@
+# TOOL DESCRIPTOR: octopus (CLI). Schema: schemas/tool-descriptor.schema.json
+# See newrelic.yaml for the full field-by-field explanation. Differences noted below.
 apiVersion: agent-standards/v1
 name: octopus
-source: cli
+source: cli            # cli | mcp
+
 auth:
-  method: api-key-profile
-  store_paths: ["~/.octopus/**"]
+  method: api-key-profile             # the tool's native auth method; provisioned by a human
+  store_paths: ["~/.octopus/**"]      # auto-added to the global denied paths
+  # Two profiles exist. Capabilities should reference the least-privileged one that works:
+  #   readonly - queries only
+  #   deployer - can trigger deployments (use only where a capability truly needs it)
   profiles: [readonly, deployer]
+
 operations:
+  # risk: read - lists data, changes nothing.
   - name: release.list
     risk: read
     command: "octopus release list --project {project}"
@@ -25,6 +33,8 @@ operations:
         project: { type: string }
         environment: { type: string }
     target: harness-resolved-from-environment
+  # risk: write - changes state. Permission rules treat this as needing approval outside dev
+  # (and always in prod). Options for risk: read | write | destructive.
   - name: deployment.redeploy
     risk: write
     command: "octopus release deploy --project {project} --version {version} --environment {environment}"

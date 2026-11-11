@@ -1,23 +1,44 @@
+# PERMISSIONS POLICY: troubleshooting. Schema: schemas/permissions.schema.json
+# Narrow-only against org-defaults.yaml. Deny wins. Secrets invariant outranks all.
 apiVersion: agent-standards/v1
+
+# Fixed value: deny. Unlisted = not allowed.
 default: deny
+
+# tool = descriptor name in permissions/tools/. operations = names from that descriptor.
+# Each operation carries a risk class (read | write | destructive) set in its descriptor.
+# Here: two read operations on newrelic, plus octopus reads and one write (redeploy).
 tools:
   - tool: newrelic
     operations: [nrql.query, entity.search]
   - tool: octopus
     operations: [release.list, deployment.status, deployment.redeploy]
+
+# Files the agent may read/write (globs). Write [] = read-only.
+# Credential stores are auto-denied regardless of this list.
 paths:
   read: ["**"]
   write: []
+
+# Hosts the tools may reach. Must be a subset of org-defaults. Wildcards allowed (*.octopus.app).
 network:
   egress: ["api.newrelic.com", "*.octopus.app"]
+
+# Sources the context template may attach.
 attach_sources: [runbook, incident-ticket]
+
+# CEL rules. decision is deny | approve. enforcement is advisory | enforced.
+# tool_call.risk is set by the tool descriptor. target.environment is set by the harness,
+# never by the agent.
 rules:
+  # Any write outside dev pauses for a human.
   - name: no-writes-outside-dev
     enforcement: enforced
     expression: >-
       tool_call.risk != "read" && target.environment != "dev"
     decision: approve
     message: "Writes outside dev need human approval."
+  # Destructive operations are never allowed here. Deny wins over approve.
   - name: no-destructive
     enforcement: enforced
     expression: >-

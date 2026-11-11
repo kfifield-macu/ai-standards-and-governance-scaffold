@@ -1,7 +1,24 @@
+# TOKEN GOVERNOR: code-review. Schema: schemas/governor.schema.json
 apiVersion: agent-standards/v1
+
+# advisory = guidance only | enforced = a gateway/harness must apply it.
 enforcement: advisory
+
+# Spend cap. All four fields required.
+#   amount:   number > 0
+#   currency: e.g. USD
+#   period:   day | week | month
+#   scope:    developer | team | capability | org  (who shares this budget)
 budget: { amount: 150, currency: USD, period: month, scope: capability }
+
+# Request-rate limits. Each: requests (int >= 1), per (developer|team|capability|org),
+# period (minute|hour|day).
 limits:
   - { requests: 50, per: developer, period: day }
+
+# At the limit: queue | deny | downgrade | approve.
+# downgrade = switch to a cheaper tier and keep going.
 on_limit: downgrade
+
+# REQUIRED when on_limit is downgrade. The tier to fall back to: fast | balanced.
 downgrade_to: fast

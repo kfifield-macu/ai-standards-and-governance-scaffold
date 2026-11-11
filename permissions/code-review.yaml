@@ -1,14 +1,44 @@
+# PERMISSIONS POLICY: code-review. Schema: schemas/permissions.schema.json
+# Rules: default deny; a capability may only NARROW org-defaults.yaml, never widen it;
+# deny wins; the secrets invariant (invariants.yaml) outranks everything here.
 apiVersion: agent-standards/v1
+
+# Fixed value: deny. Anything not listed below is not allowed.
 default: deny
+
+# Allowed tools and the specific operations on each. A list; each entry:
+#   tool:       name of a descriptor in permissions/tools/
+#   operations: operation names from that descriptor (at least one)
+# Every pair must also appear in org-defaults.yaml, or the validator reports "widens org-defaults".
 tools:
   - tool: git
     operations: [diff, log]
+
+# File access, as glob patterns.
+#   read:  paths the agent may read
+#   write: paths the agent may write (empty = read-only)
+# Paths on the secrets denylist (invariants.yaml plus every tool's auth.store_paths)
+# are denied no matter what is listed here.
 paths:
   read: ["**"]
   write: []
+
+# Network egress. egress: hosts the agent's tools may contact. [] = no network at all.
 network:
   egress: []
+
+# Context sources the template may attach (see context/code-review.md).
+# A template that attaches anything not listed here fails validation.
 attach_sources: [diff, CONTRIBUTING.md, style-guide]
+
+# Extra rules, written in CEL over the tool-call input document. Each rule:
+#   name:        short ID
+#   enforcement: advisory | enforced
+#   expression:  CEL. If TRUE, the rule fires. Available variables include
+#                tool_call.name, tool_call.risk (read|write|destructive),
+#                target.environment, capability.owner
+#   decision:    deny | approve   (what happens when the rule fires; rules can never grant)
+#   message:     shown to the user and recorded in the trace
 rules:
   - name: read-only-capability
     enforcement: enforced

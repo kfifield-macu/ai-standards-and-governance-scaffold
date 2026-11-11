@@ -1,6 +1,18 @@
+# TOKEN GOVERNOR: troubleshooting. Schema: schemas/governor.schema.json
 apiVersion: agent-standards/v1
+
+# enforced: a gateway or harness must apply these limits (not just advise).
 enforcement: enforced
+
+# Monthly spend cap shared by everyone using this capability.
+# scope options: developer | team | capability | org
 budget: { amount: 400, currency: USD, period: month, scope: capability }
+
+# 20 requests per developer per day.
 limits:
   - { requests: 20, per: developer, period: day }
-on_limit: queue          # queue, don't deny
+
+# queue: hold the request until capacity returns. "Queue, don't deny" is deliberate,
+# since someone mid-incident should wait rather than be turned away.
+# Other options: deny | downgrade (needs downgrade_to) | approve.
+on_limit: queue

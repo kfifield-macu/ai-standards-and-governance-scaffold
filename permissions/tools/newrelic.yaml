@@ -1,10 +1,32 @@
+# TOOL DESCRIPTOR: newrelic (CLI). Schema: schemas/tool-descriptor.schema.json
+# Tells the standard what this tool can do and how risky each action is, so permission rules
+# can reason about it. The agent never sends a raw command string; it picks an operation and
+# supplies args, and the harness fills in the fixed command template.
+# If an MCP server already describes this tool, reuse that and add only risk and auth.
 apiVersion: agent-standards/v1
 name: newrelic
+
+# cli = a command-line tool | mcp = an MCP tool definition.
 source: cli
+
+# How the tool authenticates. Describes WHERE credentials live, never the credentials.
 auth:
-  method: api-key-profile        # the tool's native method; the human provisions it outside this standard
+  # The tool's own native method (free text), e.g. api-key-profile, keychain, oidc.
+  # A human provisions it outside this standard.
+  method: api-key-profile
+  # Where the tool keeps credentials. AUTOMATICALLY added to the global denied paths,
+  # so the agent can never open them.
   store_paths: ["~/.newrelic/**"]
-  profiles: [readonly]           # names only, never values
+  # Profile NAMES that exist (not values). Capabilities reference these as
+  # profile:newrelic/<name> in their auth block.
+  profiles: [readonly]
+
+# The actions the tool offers. Each:
+#   name:    operation ID, referenced from permissions files
+#   risk:    read | write | destructive   (drives rules like "writes need approval")
+#   command: fixed template; {placeholders} are filled from validated args
+#   args:    JSON Schema for the arguments the agent may supply
+#   target:  how the HARNESS works out target.environment. The agent never declares it.
 operations:
   - name: nrql.query
     risk: read

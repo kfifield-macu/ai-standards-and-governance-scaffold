@@ -1,5 +1,22 @@
+# ORG-LEVEL GOVERNOR: default limits for any capability without its own.
+# Schema: schemas/governor.schema.json
 apiVersion: agent-standards/v1
+
+# Who is expected to actually apply the limits.
+#   advisory - documented guidance; developer-side tools (IDE/CLI) may only be able to nudge
+#   enforced - a gateway or harness must apply it and block/queue at the limit
 enforcement: advisory
+
+# Request-rate limits. A list; each entry:
+#   requests: integer >= 1       how many requests
+#   per:      developer | team | capability | org     who the count is kept for
+#   period:   minute | hour | day                      the window
 limits:
   - { requests: 100, per: developer, period: day }
+
+# What happens when a limit or budget is hit.
+#   queue      - hold the request and run it when capacity returns (don't fail the user)
+#   deny       - reject with error budget_exceeded
+#   downgrade  - retry on a cheaper tier (requires downgrade_to)
+#   approve    - pause until a human approves
 on_limit: queue

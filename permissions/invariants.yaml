@@ -4,6 +4,8 @@
 # Tool descriptors' auth.store_paths are added to denied_paths automatically by the validator/enforcer.
 apiVersion: agent-standards/v1
 secrets:
+  # Glob patterns the agent may NEVER read or write, in any capability.
+  # Each tool's auth.store_paths (permissions/tools/*.yaml) are added to this list automatically.
   denied_paths:
     - "~/.aws/**"
     - "~/.ssh/**"
@@ -12,12 +14,19 @@ secrets:
     - "**/.env.*"
     - "**/*.pem"
     - "**/*.key"
+  # Operations that are never allowed, written as <tool>.<operation>.
+  # They dump credentials or environment and are blocked even if a capability lists them.
   denied_operations:
     - "env"
     - "printenv"
     - "kubectl.get.secret"
     - "octopus.variable.list-sensitive"
+  # Output scanner. Tool output passes through it BEFORE the model sees it.
+  #   interface:      scanner/v1 - text in, findings out (rule + location, never the value)
+  #   implementation: optional label for the engine used (e.g. ggshield); swappable
   scanner:
     interface: scanner/v1     # text in, findings out (rule + location, never the value)
     implementation: ggshield  # optional, swappable
+  # What to do when a secret is found. Only option: halt
+  # (redact, record the rule and location, stop the run). A leak is an incident, not a warning.
   on_detect: halt             # redact, log rule and location, halt the run

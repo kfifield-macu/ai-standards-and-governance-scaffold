@@ -1,9 +1,11 @@
-# Fixed error categories -> error.type. Message is ONE line: category + cause. No credential material.
+# ERROR TAXONOMY. A fixed set of categories, used as the error.type trace attribute.
+# Runtime failures are reported as ONE line: "<category>: <cause>", with no credential material.
 categories:
-  auth_failed:       "Credentials missing or rejected for a profile."
-  permission_denied: "Policy denied the tool call."
-  budget_exceeded:   "Governor limit reached (see on_limit)."
-  secret_detected:   "Scanner found a secret in output; run halted."
+  auth_failed:       "Credentials missing or rejected for a profile."   # setup problem on the user's side
+  permission_denied: "Policy denied the tool call."                      # a rule or the default deny fired
+  budget_exceeded:   "Governor limit reached (see on_limit)."            # budget or rate limit hit
+  secret_detected:   "Scanner found a secret in output; run halted."     # secrets invariant; run stops
   tool_unavailable:  "Tool not installed or not reachable."
   invalid_input:     "Input failed the capability's input schema."
+# Example of a correctly formed message:
 example: "auth_failed: profile newrelic/readonly rejected by api.newrelic.com"

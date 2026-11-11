@@ -1,6 +1,12 @@
-# Org-level ceiling. A capability may only NARROW this, never widen it. Deny wins.
+# ORG CEILING: the most any capability may be granted. Capabilities may only NARROW this.
+# A capability asking for something not listed here fails validation ("widens org-defaults").
+# Schema: schemas/permissions.schema.json
 apiVersion: agent-standards/v1
+
+# deny: anything not listed is not allowed.
 default: deny
+
+# Every tool/operation any capability may use. Operation names come from permissions/tools/.
 tools:
   - tool: newrelic
     operations: [nrql.query, entity.search]
@@ -8,12 +14,21 @@ tools:
     operations: [release.list, deployment.status, deployment.redeploy]
   - tool: git
     operations: [diff, log]
+
+# read: paths readable by anyone. write: [] means no capability may write files unless added here.
 paths:
   read: ["**"]
   write: []
+
+# Hosts any capability's tools may reach (wildcards allowed).
 network:
   egress: ["api.newrelic.com", "*.octopus.app"]
+
+# Context sources any template may attach.
 attach_sources: [diff, CONTRIBUTING.md, style-guide, runbook, incident-ticket]
+
+# Org-wide CEL rules, applied to every capability.
+#   enforcement: advisory | enforced     decision: deny | approve
 rules:
   - name: prod-writes-need-approval
     enforcement: enforced

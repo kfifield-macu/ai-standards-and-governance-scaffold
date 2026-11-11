@@ -1,16 +1,38 @@
+# CAPABILITY MANIFEST: troubleshooting. Same structure as code-review.yaml.
+# Field-by-field detail for fields shared with code-review is repeated here in short form.
+# Schema: schemas/capability.schema.json
+
+# Fixed value: agent-standards/v1
 apiVersion: agent-standards/v1
+
+# Unique ID: lowercase, digits, hyphens. Must match this file's name.
 name: troubleshooting
 description: Investigate incidents with read-only observability and deployment queries.
+
+# Semver. Permission or budget changes require owner review.
 version: 0.1.0
+
+# draft | active | deprecated.
+# This one is still draft: not approved for general use yet.
 status: draft
+
+# REQUIRED. Email/group accountable for this capability.
 owner: platform-team@example.com
+
+# L1 documented | L2 validated (needs evals) | L3 gateway-enforced.
 conformance: L2
+
+# Logical tier: fast | balanced | deep. Resolved via models/tiers.yaml.
 model: { tier: balanced }
+
+# Caller input, as JSON Schema. Mismatch -> error invalid_input.
 inputs:
   type: object
   required: [incident]
   properties:
     incident: { type: string }
+
+# Result shape, as JSON Schema. Checked before returning to the caller.
 outputs:
   type: object
   required: [hypothesis, evidence, next_step]
@@ -18,10 +40,25 @@ outputs:
     hypothesis: { type: string }
     evidence: { type: array, items: { type: string } }
     next_step: { type: string }
+
+# Context template, governor and permissions policy for this capability.
 context: context/troubleshooting.md
 governor: governors/troubleshooting.yaml
 permissions: permissions/troubleshooting.yaml
+
+# Trace recording. content_capture false = metadata only.
+# If content_capture is true, redact: true and retention_days are required.
 observability: { content_capture: false, retention_days: 30, redact: true }
+
+# AUTH: which credential profiles this capability uses. REFERENCES ONLY, never values.
+# Format: profile:<tool>/<profile-name>
+#   - <tool> must match a descriptor in permissions/tools/
+#   - <profile-name> must be one that descriptor lists under auth.profiles
+# Use the LEAST-PRIVILEGE profile (readonly here). The harness runs the CLI with the
+# profile, so the CLI reads its own credential store. The agent never sees a secret.
+# Required for any capability that uses an authenticated tool.
 auth:
-  profiles: [profile:newrelic/readonly, profile:octopus/readonly]   # references only
+  profiles: [profile:newrelic/readonly, profile:octopus/readonly]
+
+# Evals directory. Required at L2 and above.
 evals: evals/troubleshooting/

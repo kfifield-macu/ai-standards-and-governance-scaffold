@@ -1,11 +1,23 @@
+# MINIMAL EVAL. Schema: schemas/eval.schema.json. Required at conformance L2 and above.
+# One file = one test case. A fuller eval framework may replace this later.
 apiVersion: agent-standards/v1
+
+# Which capability this eval tests (must match the capability's name).
 capability: code-review
+
+# Short ID for this case.
 name: flags-obvious-style-violation
+
+# The input to send, shaped like the capability's `inputs` schema.
 input:
   diff: |
     -def f(x):
     +def f( x ):return x
+
+# Properties the output must have: plain-language checks, one per list item (at least one).
 expect:
   - "findings is a table ranked by severity"
   - "at least one finding mentions formatting"
+
+# The pass criterion that combines the expect items.
 pass: "all expect items hold"
