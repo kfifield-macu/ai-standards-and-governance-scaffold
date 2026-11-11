@@ -16,6 +16,8 @@ This folder is **specs and schemas only**. It defines the contract and validates
 
 - [Design principles](#design-principles)
 - [Layout](#layout)
+- [apiVersion](#apiversion)
+- [Capability versioning](#capability-versioning)
 - [The capability is the root](#the-capability-is-the-root)
 - [1. Capability interface](#1-capability-interface)
 - [2. Context templates](#2-context-templates)
@@ -70,6 +72,78 @@ This folder is **specs and schemas only**. It defines the contract and validates
     └── sync.sh                    generate provider files from AGENTS.md
 ```
 
+## apiVersion
+
+Every YAML file that has a JSON Schema starts with `apiVersion: agent-standards/v1`. It names the **version of this standard** the file was written against. It is not the capability's own version (that is `version`, semver, inside a capability manifest).
+
+### Where it appears
+
+Capabilities, governors (org-defaults and per capability), permissions (invariants, org-defaults, per capability), tool descriptors and evals. The agent stub in `agents/README.md` uses it too.
+
+It does **not** appear in `models/tiers.yaml`, `observability/*.yaml` or context-template front matter. Those have no schema, so there is nothing to version yet.
+
+### How it is enforced
+
+- **Each schema pins it.** Every file in `schemas/` declares `"apiVersion": { "const": "agent-standards/v1" }` and lists `apiVersion` in `required`. A missing, misspelled or different value fails validation.
+- **Schema `$id`s carry the same version**, for example `agent-standards/v1/capability`. They are identifiers, not URLs that get fetched.
+- **Schemas reject unknown fields** (`additionalProperties: false`), so a file cannot quietly use fields from a future version.
+- **The validator does not read `apiVersion` to pick a schema.** `scripts/validate.ps1` chooses the schema from the file's location (`capabilities/` uses `capability.schema.json`, and so on), then the schema checks the value. Today there is exactly one version, so there is nothing to choose between.
+
+### How it is managed
+
+It is a fixed constant, edited by hand when the standard changes. There is no tooling that bumps it or migrates files. The intended rules:
+
+| Change to the standard | Version | Effect on existing files |
+|------------------------|---------|--------------------------|
+| Add an optional field, clarify a description, add an enum value that old files never need | Stay on `v1` | None. Existing files stay valid. |
+| Remove or rename a field, make an optional field required, change what a field means, tighten a rule | New major: `v2` | Files stay on `v1` until migrated. |
+
+Moving to `v2` would mean:
+
+1. Add `v2` schemas and change the `const` and `$id` in them.
+2. Teach the validator to choose a schema by `apiVersion` (it cannot today) so `v1` and `v2` files can coexist during migration.
+3. Migrate files one capability at a time, then retire the `v1` schemas.
+
+Only the major version appears in `apiVersion`. There are no `v1.1` or `v1beta` values. Capability-level changes use the manifest `version` field instead.
+
+### Why bother with one value
+
+- A consumer (validator, gateway, generator) can refuse a file it does not understand instead of guessing.
+- Files stay self-describing when copied out of this repo.
+- It reserves the migration path above, so a breaking change does not have to be a flag day.
+
+When you add a new file type, give it a schema with the same `apiVersion` const and put `apiVersion` first in the file. Capability files carry a comment saying the value is fixed.
+
+## Capability versioning
+
+A capability manifest's `version` is semver (`MAJOR.MINOR.PATCH`) for that one capability. It is separate from [`apiVersion`](#apiversion), which versions the standard itself and changes rarely, for everyone at once.
+
+### Where it is used
+
+- **Manifest.** `version` is required and must match `^\d+\.\d+\.\d+$`.
+- **Traces.** `capability.version` is a required attribute (`observability/attributes.yaml`): the exact version that ran. This is what ties a run, a cost spike or an incident to a specific definition of the capability.
+- **Review.** A change to permissions or budgets requires owner review. The version bump is the marker for that review.
+
+Governors, permissions and context templates have no version of their own. They are versioned through the capability that points to them.
+
+### When to bump
+
+| Change | Bump | Why |
+|--------|------|-----|
+| Widen permissions (new tool or operation, egress host, write path or attach source) | Major | Anyone relying on the old boundary is now wrong |
+| Change `inputs` or `outputs` in a way that breaks callers | Major | Breaking interface change |
+| Change `model` (tier or pin) | Minor | Behavior and cost shift, interface stays the same |
+| Tighten permissions or change a governor budget | Minor | Behavior or cost shifts. Tightening is arguably a patch, but a minor bump gives traces a clean marker |
+| Edit the context template prompt | Minor | Output changes, interface stays the same |
+| Typo, comment or wording with no effect on runs | Patch | Nothing changes at runtime |
+| `status` change (draft to active, active to deprecated) | Minor | A lifecycle event, not a behavior change |
+
+If a change fits more than one row, use the highest bump.
+
+### Not enforced yet
+
+The validator checks the format only. It does not check that you bumped the version, or that it went up. Enforcing that needs a comparison against the main branch, so it belongs in CI. See [Open decisions](#open-decisions).
+
 ## The capability is the root
 
 A capability manifest is the single document that ties the five standards together. It points to a context template, a governor and a permissions policy, and carries the owner, version, status and model (a tier, specific models, or both).
@@ -107,7 +181,7 @@ Defines what users and services can ask for.
     tier: balanced                       # portable default
     pin: { anthropic: claude-sonnet-5-5 } # Anthropic always uses this; others use the tier
   ```
-- **Lifecycle.** `status` is `draft`, `active` or `deprecated`. `version` is semver. A change to permissions or budgets requires owner review.
+- **Lifecycle.** `status` is `draft`, `active` or `deprecated`. `version` is semver (see [Capability versioning](#capability-versioning)). A change to permissions or budgets requires owner review.
 - **Required owner.** A capability without an owner is rejected ("Nobody has decided this").
 - **Evals** are required at L2 and above (see [evals](#evals)).
 - **Exposure.** The manifest is the source. Adapters are generated from it: Agent Skills for IDE and CLI hosts, MCP prompt or tool for services.
@@ -348,6 +422,7 @@ Notes on the validator:
 | Data classification in permissions | Add as a fifth permission dimension | Deferred past v1 |
 | Fuller eval framework | Scoring, datasets, CI gate | Deferred |
 | Real skills and agents | Fill the stubs | Deferred |
+| **Version-bump check** | CI step that compares a capability's permissions and governor against main and requires a higher `version` | Open. The validator checks the format only. |
 | Enforcer implementation | Gateway, MCP proxy or host harness | Deferred (L3) |
 
 ## Adding a capability
