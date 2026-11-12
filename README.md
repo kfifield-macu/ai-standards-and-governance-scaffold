@@ -67,9 +67,14 @@ This folder is **specs and schemas only**. It defines the contract and validates
 ├── schemas/                       JSON Schemas for every file type
 ├── skills/                        stub (see skills/README.md)
 ├── agents/                        stub (see agents/README.md)
-└── scripts/
-    ├── validate.ps1               schema + cross-file rule checks (PowerShell 7)
-    └── sync.sh                    generate provider files from AGENTS.md
+├── scripts/
+│   ├── validate.ps1               schema + cross-file rule checks (PowerShell 7)
+│   └── sync.sh                    generate provider files from AGENTS.md
+└── tests/                         model-free tests of the standard itself (see tests/README.md)
+    ├── run.ps1                    test runner
+    ├── lib/policy-engine.ps1      dry-run policy engine (test double, not the enforcer)
+    ├── policy/<capability>.yaml   scripted agent actions and expected decisions
+    └── validator/mutations.yaml   break-the-repo cases for validate.ps1
 ```
 
 ## apiVersion
@@ -397,7 +402,7 @@ The validator checks:
 8. `content_capture` comes with `redact` and `retention_days`.
 9. Descriptor credential stores are added to the denied paths, and no allowed path is listed verbatim in that denylist.
 10. The model tier exists in `models/tiers.yaml`, and every `model.pin` provider is listed there.
-11. No secret-looking literal appears in any YAML, Markdown or JSON file under the repo (the `scripts/` folder is excluded).
+11. No secret-looking literal appears in any YAML, Markdown or JSON file under the repo (the `scripts/` folder is excluded, but `tests/` is scanned, so tests use runtime-built fixtures instead of literals).
 
 **It does not evaluate CEL.** It checks that rules are well-formed. Evaluating them is the enforcer's job (L3).
 
@@ -408,10 +413,14 @@ pwsh -NoProfile -File tests/run.ps1                              # everything
 pwsh -NoProfile -File tests/run.ps1 -Suite policy -Filter '*prod*'
 ```
 
+Full reference, including the case formats, decision order and how to add cases, is in [`tests/README.md`](tests/README.md). In short:
+
 - **`tests/validator/mutations.yaml`** copies the repo to a temp folder, breaks it on purpose (widen permissions, bad `apiVersion`, a secret literal, ...) and asserts `validate.ps1` rejects it. It tests the guardrails themselves.
 - **`tests/policy/<capability>.yaml`** scripts agent actions (tool calls, file access, egress, input, tool output) and asserts the decision (`allow`, `deny`, `approve`, `queue`, `downgrade`, `halt`) and error category. They run through a dry-run policy engine in `tests/lib/policy-engine.ps1`.
 
 The engine is a test double, not the L3 enforcer. Its CEL support is minimal (`==`, `!=`, `has()`, `&&`, `||`); an unsupported expression throws so it cannot be skipped silently. Add a case to a YAML file when you add or change a rule.
+
+The tests check the rules, not model behavior. How a model actually behaves is what `evals/` is for, and that needs a live model.
 
 Notes on the validator:
 
@@ -445,5 +454,6 @@ Notes on the validator:
 4. Write `governors/<name>.yaml`.
 5. If it uses an authenticated tool, add `auth.profiles` with a least-privilege profile.
 6. For L2 and above, add `evals/<name>/` with at least one eval.
-7. Run `pwsh -NoProfile -File scripts/validate.ps1`.
-8. Get owner review. Changes to permissions or budgets always need it.
+7. Add `tests/policy/<name>.yaml`: its permitted tools, a denied one, its governor and the secrets paths.
+8. Run `pwsh -NoProfile -File scripts/validate.ps1` and `pwsh -NoProfile -File tests/run.ps1`.
+9. Get owner review. Changes to permissions or budgets always need it.
