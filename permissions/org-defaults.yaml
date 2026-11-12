@@ -39,6 +39,6 @@ rules:
   - name: capability-has-owner
     enforcement: enforced
     expression: >-
-      has(capability.owner) && capability.owner != ""
+      !has(capability.owner) || capability.owner == ""
     decision: deny
     message: "this capability has no owner. Nobody has decided this."

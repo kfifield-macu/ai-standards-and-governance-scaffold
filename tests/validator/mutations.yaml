@@ -1,0 +1,106 @@
+# VALIDATOR MUTATION TESTS. Run by tests/run.ps1.
+# Each case copies the repo to a temp folder, applies the mutations, runs scripts/validate.ps1
+# there, and checks the exit code and that the output contains every expect_contains string.
+# This tests the guardrails themselves: a rule that stops failing when broken is a bug.
+#
+# Mutation ops:
+#   replace  file, find, with    exact text must exist (a stale test fails loudly)
+#   append   file, text
+#   create   file, text          {{AWS_KEY}} expands to a synthetic key built at runtime
+#   delete   file                file or folder
+cases:
+  - name: baseline-repo-passes
+    mutations: []
+    expect_exit: 0
+    expect_contains: ["OK: 0 error(s)"]
+
+  - name: wrong-apiVersion-is-rejected
+    mutations:
+      - { op: replace, file: capabilities/code-review.yaml, find: "apiVersion: agent-standards/v1", with: "apiVersion: agent-standards/v2" }
+    expect_exit: 1
+    expect_contains: ["capabilities/code-review.yaml"]
+
+  - name: empty-owner-is-rejected
+    mutations:
+      - { op: replace, file: capabilities/code-review.yaml, find: "owner: platform-team@example.com", with: 'owner: ""' }
+    expect_exit: 1
+    expect_contains: ["capabilities/code-review.yaml"]
+
+  - name: file-name-must-match-capability-name
+    mutations:
+      - { op: replace, file: capabilities/code-review.yaml, find: "name: code-review", with: "name: code-reviewer" }
+    expect_exit: 1
+    expect_contains: ["file name must match capability name"]
+
+  - name: unknown-model-tier-is-rejected
+    mutations:
+      - { op: replace, file: capabilities/code-review.yaml, find: "model: { tier: balanced }", with: "model: { tier: ultra }" }
+    expect_exit: 1
+    expect_contains: ["capabilities/code-review.yaml"]
+
+  - name: content-capture-without-redact-is-rejected
+    mutations:
+      - { op: replace, file: capabilities/code-review.yaml, find: "observability: { content_capture: false, retention_days: 30, redact: true }", with: "observability: { content_capture: true }" }
+    expect_exit: 1
+    expect_contains: ["capabilities/code-review.yaml"]
+
+  - name: l2-without-evals-directory-is-rejected
+    mutations:
+      - { op: delete, file: evals/code-review }
+    expect_exit: 1
+    expect_contains: ["L2 requires an evals directory"]
+
+  - name: undeclared-auth-profile-is-rejected
+    mutations:
+      - { op: replace, file: capabilities/troubleshooting.yaml, find: "profile:newrelic/readonly, profile:octopus/readonly", with: "profile:newrelic/admin" }
+    expect_exit: 1
+    expect_contains: ["not declared by any tool descriptor"]
+
+  - name: widening-tools-past-the-org-ceiling-is-rejected
+    mutations:
+      - { op: replace, file: permissions/code-review.yaml, find: "operations: [diff, log]", with: "operations: [diff, log, push]" }
+    expect_exit: 1
+    expect_contains: ["git.push is not in the tool descriptor", "widens org-defaults"]
+
+  - name: widening-egress-past-the-org-ceiling-is-rejected
+    mutations:
+      - { op: replace, file: permissions/code-review.yaml, find: "egress: []", with: 'egress: ["evil.example.com"]' }
+    expect_exit: 1
+    expect_contains: ["egress evil.example.com widens org-defaults"]
+
+  - name: widening-write-paths-past-the-org-ceiling-is-rejected
+    mutations:
+      - { op: replace, file: permissions/code-review.yaml, find: "write: []", with: 'write: ["src/**"]' }
+    expect_exit: 1
+    expect_contains: ["widens org-defaults"]
+
+  - name: allowing-a-denied-path-is-rejected
+    mutations:
+      - { op: replace, file: permissions/code-review.yaml, find: 'read: ["**"]', with: 'read: ["**", "~/.ssh/**"]' }
+    expect_exit: 1
+    expect_contains: ["denied by the secrets invariant"]
+
+  - name: context-attaching-a-disallowed-source-is-rejected
+    mutations:
+      - { op: replace, file: permissions/code-review.yaml, find: "attach_sources: [diff, CONTRIBUTING.md, style-guide]", with: "attach_sources: [CONTRIBUTING.md, style-guide]" }
+    expect_exit: 1
+    expect_contains: ["attaches 'diff' but permissions do not allow it"]
+
+  - name: globally-denied-operation-in-a-descriptor-is-rejected
+    mutations:
+      - op: append
+        file: permissions/tools/octopus.yaml
+        text: |2
+            - name: variable.list-sensitive
+              risk: read
+              command: "octopus variable list --sensitive"
+              args: { type: object }
+              target: harness-resolved-from-profile
+    expect_exit: 1
+    expect_contains: ["globally denied by the secrets invariant"]
+
+  - name: secret-literal-in-markdown-is-rejected
+    mutations:
+      - { op: create, file: docs/notes.md, text: "key is {{AWS_KEY}}" }
+    expect_exit: 1
+    expect_contains: ["possible secret literal (aws-access-key)"]

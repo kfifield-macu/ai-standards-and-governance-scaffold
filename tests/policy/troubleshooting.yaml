@@ -1,0 +1,113 @@
+# POLICY SCENARIOS: troubleshooting. Run by tests/run.ps1 against the dry-run policy engine.
+# Each case: an agent action in an environment, and the decision the policy should reach.
+#   environment: dev | staging | prod   (supplied by the harness in real life; here by the test)
+#   usage:       what the governor has already counted, e.g. { requests: 20, spend: 0 }
+#   action.type: tool_call | file | egress | input | output
+#   expect:      decision (allow|deny|approve|queue|downgrade|halt), optional error, tier, rule
+capability: troubleshooting
+cases:
+  # ---- tool calls: reads ----
+  - name: nrql-query-in-dev-is-allowed
+    environment: dev
+    action: { type: tool_call, tool: newrelic, operation: nrql.query, args: { account: "123", nrql: "SELECT count(*) FROM Transaction" } }
+    expect: { decision: allow }
+  - name: nrql-query-in-prod-is-allowed-because-read
+    environment: prod
+    action: { type: tool_call, tool: newrelic, operation: nrql.query, args: { account: "123", nrql: "SELECT 1" } }
+    expect: { decision: allow }
+
+  # ---- tool calls: writes ----
+  - name: redeploy-in-dev-is-allowed
+    environment: dev
+    action: { type: tool_call, tool: octopus, operation: deployment.redeploy, args: { project: web, version: "1.2.3", environment: dev } }
+    expect: { decision: allow }
+  - name: redeploy-in-staging-needs-approval
+    environment: staging
+    action: { type: tool_call, tool: octopus, operation: deployment.redeploy, args: { project: web, version: "1.2.3", environment: staging } }
+    expect: { decision: approve, rule: no-writes-outside-dev }
+  - name: redeploy-in-prod-needs-approval
+    environment: prod
+    action: { type: tool_call, tool: octopus, operation: deployment.redeploy, args: { project: web, version: "1.2.3", environment: prod } }
+    expect: { decision: approve }
+
+  # ---- default deny and narrowing ----
+  - name: git-diff-is-not-granted-to-troubleshooting
+    action: { type: tool_call, tool: git, operation: diff, args: { range: "HEAD~1" } }
+    expect: { decision: deny, error: permission_denied }
+  - name: unknown-tool-is-denied
+    action: { type: tool_call, tool: terraform, operation: apply, args: {} }
+    expect: { decision: deny, error: permission_denied }
+
+  # ---- argument validation ----
+  - name: missing-required-arg-is-invalid-input
+    action: { type: tool_call, tool: newrelic, operation: nrql.query, args: { account: "123" } }
+    expect: { decision: deny, error: invalid_input }
+
+  # ---- secrets invariant ----
+  - name: printenv-is-denied
+    action: { type: tool_call, tool: shell, operation: printenv, args: {} }
+    expect: { decision: deny, error: permission_denied }
+  - name: kubectl-get-secret-is-denied
+    action: { type: tool_call, tool: kubectl, operation: get.secret, args: {} }
+    expect: { decision: deny, error: permission_denied }
+  - name: octopus-sensitive-variable-listing-is-denied
+    action: { type: tool_call, tool: octopus, operation: variable.list-sensitive, args: {} }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-aws-credentials-is-denied
+    action: { type: file, access: read, path: "~/.aws/credentials" }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-newrelic-profile-dir-is-denied-via-descriptor-store-path
+    action: { type: file, access: read, path: "~/.newrelic/profiles.json" }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-octopus-profile-dir-is-denied-via-descriptor-store-path
+    action: { type: file, access: read, path: "~/.octopus/config" }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-dotenv-in-subfolder-is-denied
+    action: { type: file, access: read, path: "app/config/.env" }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-dotenv-variant-is-denied
+    action: { type: file, access: read, path: "app/.env.production" }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-pem-is-denied
+    action: { type: file, access: read, path: "certs/server.pem" }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-ordinary-file-is-allowed
+    action: { type: file, access: read, path: "runbooks/db-failover.md" }
+    expect: { decision: allow }
+  - name: writing-any-file-is-denied
+    action: { type: file, access: write, path: "notes.md" }
+    expect: { decision: deny, error: permission_denied }
+  - name: tool-output-containing-aws-key-halts-the-run
+    action: { type: output, fixture: aws-access-key }
+    expect: { decision: halt, error: secret_detected }
+  - name: tool-output-containing-private-key-halts-the-run
+    action: { type: output, fixture: private-key }
+    expect: { decision: halt, error: secret_detected }
+  - name: clean-tool-output-passes
+    action: { type: output, text: "error rate 4.2% over the last 15 minutes" }
+    expect: { decision: allow }
+
+  # ---- network ----
+  - name: egress-to-newrelic-is-allowed
+    action: { type: egress, host: api.newrelic.com }
+    expect: { decision: allow }
+  - name: egress-to-octopus-wildcard-host-is-allowed
+    action: { type: egress, host: acme.octopus.app }
+    expect: { decision: allow }
+  - name: egress-to-unlisted-host-is-denied
+    action: { type: egress, host: evil.example.com }
+    expect: { decision: deny, error: permission_denied }
+
+  # ---- governor (enforced, on_limit: queue) ----
+  - name: request-limit-reached-queues-instead-of-denying
+    usage: { requests: 20, spend: 0 }
+    action: { type: tool_call, tool: newrelic, operation: entity.search, args: { name: checkout } }
+    expect: { decision: queue }
+  - name: budget-exhausted-queues-instead-of-denying
+    usage: { requests: 0, spend: 400 }
+    action: { type: tool_call, tool: newrelic, operation: entity.search, args: { name: checkout } }
+    expect: { decision: queue }
+  - name: under-limits-is-allowed
+    usage: { requests: 19, spend: 399 }
+    action: { type: tool_call, tool: newrelic, operation: entity.search, args: { name: checkout } }
+    expect: { decision: allow }

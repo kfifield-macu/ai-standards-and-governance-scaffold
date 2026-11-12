@@ -1,0 +1,75 @@
+# POLICY SCENARIOS: code-review. See troubleshooting.yaml for the case format.
+capability: code-review
+cases:
+  # ---- input schema ----
+  - name: valid-input-is-accepted
+    action: { type: input, input: { diff: "-a\n+b" } }
+    expect: { decision: allow }
+  - name: missing-diff-is-invalid-input
+    action: { type: input, input: {} }
+    expect: { decision: deny, error: invalid_input }
+  - name: wrong-type-diff-is-invalid-input
+    action: { type: input, input: { diff: 5 } }
+    expect: { decision: deny, error: invalid_input }
+
+  # ---- tools ----
+  - name: git-diff-is-allowed
+    action: { type: tool_call, tool: git, operation: diff, args: { range: "main..HEAD" } }
+    expect: { decision: allow }
+  - name: git-log-is-allowed
+    action: { type: tool_call, tool: git, operation: log, args: { range: "main..HEAD" } }
+    expect: { decision: allow }
+  - name: git-diff-without-range-is-invalid-input
+    action: { type: tool_call, tool: git, operation: diff, args: {} }
+    expect: { decision: deny, error: invalid_input }
+  - name: git-push-is-denied
+    action: { type: tool_call, tool: git, operation: push, args: {} }
+    expect: { decision: deny, error: permission_denied }
+  - name: octopus-redeploy-is-denied-even-in-dev
+    environment: dev
+    action: { type: tool_call, tool: octopus, operation: deployment.redeploy, args: { project: web, version: "1", environment: dev } }
+    expect: { decision: deny, error: permission_denied }
+  - name: nrql-query-is-denied
+    action: { type: tool_call, tool: newrelic, operation: nrql.query, args: { account: "1", nrql: "SELECT 1" } }
+    expect: { decision: deny, error: permission_denied }
+
+  # ---- files ----
+  - name: reading-source-is-allowed
+    action: { type: file, access: read, path: "src/app.py" }
+    expect: { decision: allow }
+  - name: reading-ssh-key-dir-is-denied-despite-read-all
+    action: { type: file, access: read, path: "~/.ssh/id_ed25519" }
+    expect: { decision: deny, error: permission_denied }
+  - name: reading-dotenv-is-denied-despite-read-all
+    action: { type: file, access: read, path: ".env" }
+    expect: { decision: deny, error: permission_denied }
+  - name: git-credentials-file-is-denied-via-descriptor-store-path
+    action: { type: file, access: read, path: "~/.git-credentials" }
+    expect: { decision: deny, error: permission_denied }
+  - name: writing-is-denied
+    action: { type: file, access: write, path: "src/app.py" }
+    expect: { decision: deny, error: permission_denied }
+
+  # ---- network: egress is [] so there is none ----
+  - name: any-egress-is-denied
+    action: { type: egress, host: api.newrelic.com }
+    expect: { decision: deny, error: permission_denied }
+
+  # ---- governor (advisory, on_limit: downgrade to fast) ----
+  - name: request-limit-reached-downgrades-tier
+    usage: { requests: 50, spend: 0 }
+    action: { type: tool_call, tool: git, operation: diff, args: { range: HEAD } }
+    expect: { decision: downgrade, tier: fast }
+  - name: budget-exhausted-downgrades-tier
+    usage: { requests: 0, spend: 150 }
+    action: { type: tool_call, tool: git, operation: diff, args: { range: HEAD } }
+    expect: { decision: downgrade, tier: fast }
+  - name: under-limits-is-allowed
+    usage: { requests: 49, spend: 149 }
+    action: { type: tool_call, tool: git, operation: diff, args: { range: HEAD } }
+    expect: { decision: allow }
+
+  # ---- output scanning ----
+  - name: tool-output-containing-github-token-halts-the-run
+    action: { type: output, fixture: github-token }
+    expect: { decision: halt, error: secret_detected }

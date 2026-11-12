@@ -401,6 +401,18 @@ The validator checks:
 
 **It does not evaluate CEL.** It checks that rules are well-formed. Evaluating them is the enforcer's job (L3).
 
+### Tests (no AI model involved)
+
+```bash
+pwsh -NoProfile -File tests/run.ps1                              # everything
+pwsh -NoProfile -File tests/run.ps1 -Suite policy -Filter '*prod*'
+```
+
+- **`tests/validator/mutations.yaml`** copies the repo to a temp folder, breaks it on purpose (widen permissions, bad `apiVersion`, a secret literal, ...) and asserts `validate.ps1` rejects it. It tests the guardrails themselves.
+- **`tests/policy/<capability>.yaml`** scripts agent actions (tool calls, file access, egress, input, tool output) and asserts the decision (`allow`, `deny`, `approve`, `queue`, `downgrade`, `halt`) and error category. They run through a dry-run policy engine in `tests/lib/policy-engine.ps1`.
+
+The engine is a test double, not the L3 enforcer. Its CEL support is minimal (`==`, `!=`, `has()`, `&&`, `||`); an unsupported expression throws so it cannot be skipped silently. Add a case to a YAML file when you add or change a rule.
+
 Notes on the validator:
 
 - **PowerShell 7+ required.** Windows PowerShell 5.1 (the one built into Windows) lacks `Test-Json -Schema`. Install `pwsh` separately if needed.
